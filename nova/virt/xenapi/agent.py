@@ -66,6 +66,8 @@ CONF.register_opts(xenapi_agent_opts)
 def _call_agent(session, instance, vm_ref, method, addl_args=None,
                 timeout=None):
     """Abstracts out the interaction with the agent xenapi plugin."""
+    ret = None
+    keep_going = True;	
     if addl_args is None:
         addl_args = {}
     if timeout is None:
@@ -84,31 +86,32 @@ def _call_agent(session, instance, vm_ref, method, addl_args=None,
         ret = session.call_plugin('agent', method, args)
     except session.XenAPI.Failure as e:
         err_msg = e.details[-1].splitlines()[-1]
+	keep_going = false;
         if 'TIMEOUT:' in err_msg:
             LOG.error(_('TIMEOUT: The call to %(method)s timed out. '
                         'args=%(args)r'), locals(), instance=instance)
-            return {'returncode': 'timeout', 'message': err_msg}
+            ret = {'returncode': 'timeout', 'message': err_msg}
         elif 'NOT IMPLEMENTED:' in err_msg:
             LOG.error(_('NOT IMPLEMENTED: The call to %(method)s is not'
                         ' supported by the agent. args=%(args)r'),
                       locals(), instance=instance)
-            return {'returncode': 'notimplemented', 'message': err_msg}
+            ret = {'returncode': 'notimplemented', 'message': err_msg}
         else:
             LOG.error(_('The call to %(method)s returned an error: %(e)s. '
                         'args=%(args)r'), locals(), instance=instance)
-            return {'returncode': 'error', 'message': err_msg}
-        return None
+            ret = {'returncode': 'error', 'message': err_msg}
 
-    if isinstance(ret, dict):
-        return ret
-    try:
-        return jsonutils.loads(ret)
-    except TypeError:
-        LOG.error(_('The agent call to %(method)s returned an invalid'
-                    ' response: %(ret)r. path=%(path)s; args=%(args)r'),
-                  locals(), instance=instance)
-        return {'returncode': 'error',
-                'message': 'unable to deserialize response'}
+    if keep_going && !isinstance(ret, dict):
+	    try:
+		ret = jsonutils.loads(ret)
+	    except TypeError:
+		LOG.error(_('The agent call to %(method)s returned an invalid'
+			    ' response: %(ret)r. path=%(path)s; args=%(args)r'),
+			  locals(), instance=instance)
+		ret = {'returncode': 'error',
+			'message': 'unable to deserialize response'}
+
+    return ret
 
 
 def _get_agent_version(session, instance, vm_ref):
