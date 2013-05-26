@@ -65,9 +65,9 @@ CONF.register_opts(xenapi_agent_opts)
 
 def _call_agent(session, instance, vm_ref, method, addl_args=None,
                 timeout=None):
-    """Abstracts out the interaction with the agent xenapi plugin."""
     ret = None
-    keep_going = True;	
+    keep_going = True
+    """Abstracts out the interaction with the agent xenapi plugin."""
     if addl_args is None:
         addl_args = {}
     if timeout is None:
@@ -86,7 +86,7 @@ def _call_agent(session, instance, vm_ref, method, addl_args=None,
         ret = session.call_plugin('agent', method, args)
     except session.XenAPI.Failure as e:
         err_msg = e.details[-1].splitlines()[-1]
-	keep_going = false;
+	keep_going = False;
         if 'TIMEOUT:' in err_msg:
             LOG.error(_('TIMEOUT: The call to %(method)s timed out. '
                         'args=%(args)r'), locals(), instance=instance)
@@ -101,7 +101,7 @@ def _call_agent(session, instance, vm_ref, method, addl_args=None,
                         'args=%(args)r'), locals(), instance=instance)
             ret = {'returncode': 'error', 'message': err_msg}
 
-    if keep_going && !isinstance(ret, dict):
+    if keep_going and not(isinstance(ret, dict)):
 	    try:
 		ret = jsonutils.loads(ret)
 	    except TypeError:
